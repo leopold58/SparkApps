@@ -3,11 +3,9 @@ package com.dt.spark.cores;
 import scala.Serializable;
 import scala.math.Ordered;
 
-import java.util.Objects;
-
 /**
- * @title:
- * @description:
+ * @title: 二次排序java类
+ * @description: 实现二次排序，即第一个数比较大小之后，如果第一个数相等，那么再比较第二个数。
  * @author: jguo
  * @date: 2021/6/16
  */
