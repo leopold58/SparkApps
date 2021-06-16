@@ -5,6 +5,8 @@ import org.apache.log4j.{Level, Logger}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 
+import scala.collection.immutable.HashSet
+
 /**
  * @title:
  * @description:
@@ -90,6 +92,30 @@ object Movie_User_Analyzer_RDD {
       .map(x =>(x._2,x._1))
       .take(10)
       .foreach(println)
+
+    val targetQQUsers = usersRDD.map(_.split("::")).map(x => (x(0), x(2))).filter(_._2.equals("18"))
+    val targetTaoBaoUsers = usersRDD.map(_.split("::")).map(x => (x(0), x(2))).filter(_._2.equals("25"))
+    /**
+     * 在 Spark中如何实现mapjoin呢?显然要借助于 Broadcast,
+     * 把数据广播到Executor级别，让该 Executor 上的所有任务共享该唯一的数据，
+     * 而不是每次运行 Task 的时候,都要发送一份数据的复制，这显著地降低了网络数据的传输和JVM内存的消耗
+     */
+    val targetQQUsersSet = HashSet() ++ targetQQUsers.map(_._1).collect()
+    val targetTaoBaoUsersSet = HashSet() ++ targetTaoBaoUsers.map(_._1).collect()
+    val targetQQUsersBroadcast = sc.broadcast(targetQQUsersSet)
+    val targetTaoBaoUsersBroadcast = sc.broadcast(targetTaoBaoUsersSet)
+
+    val movieID2Name = moviesRDD.map(_.split("::")).map(x =>(x(0),x(1))).collect.toMap
+    println("所有电影中QQ或者微信核心目标用户最喜爱电影TopN分析：")
+    ratingsRDD.map(_.split("::")).map(x => (x(0),x(1))).filter(x => targetQQUsersBroadcast.value.contains(x._1))
+      .map(x => (x._2, 1)).reduceByKey(_+_).map(x =>(x._2,x._1)).sortByKey(false).map(x => (x._2,x._1)).take(10)
+      .map(x => (movieID2Name.getOrElse(x._1,null), x._2)).foreach(println)
+
+    println("所有电影中淘宝核心目标用户最喜爱的电影TopN分析：")
+    ratingsRDD.map(_.split("::")).map(x => (x(0),x(1))).filter(x => targetTaoBaoUsersBroadcast.value.contains(x._1))
+      .map(x => (x._2, 1)).reduceByKey(_+_).map(x => (x._2,x._1))
+      .sortByKey(false).map(x => (x._2,x._1)).take(10)
+      .map(x => (movieID2Name.getOrElse(x._1,null), x._2)).foreach(println)
   }
 
 
