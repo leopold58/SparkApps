@@ -116,6 +116,30 @@ object Movie_User_Analyzer_RDD {
       .map(x => (x._2, 1)).reduceByKey(_+_).map(x => (x._2,x._1))
       .sortByKey(false).map(x => (x._2,x._1)).take(10)
       .map(x => (movieID2Name.getOrElse(x._1,null), x._2)).foreach(println)
+
+    println("对电影评分数据以Timestamp和Rating两个维度进行二次降序排列：")
+    val pairWithSortkey = ratingsRDD.map(line =>{
+      val splited =line.split("::")
+      (new SecondarySortKey(splited(3).toDouble,splited(2).toDouble),line)
+    })
+    val sorted = pairWithSortkey.sortByKey(false)
+    val sortedResult = sorted.map(sortedline => sortedline._2)
+    sortedResult.take(10).foreach(println)
+  }
+  class SecondarySortKey(val first:Double,val second:Double) extends Ordered[SecondarySortKey] with Serializable{
+    override def compare(that: SecondarySortKey): Int = {
+      if (this.first - that.first != 0){
+        (this.first - that.first).toInt
+      }else{
+        if(this.second - that.second > 0){
+          Math.ceil(this.second - that.second).toInt
+        }else if(this.second - that.second < 0){
+          Math.floor(this.second - that.second).toInt
+        }else{
+          (this.second - that.second).toInt
+        }
+      }
+    }
   }
 
 

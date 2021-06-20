@@ -13,12 +13,12 @@ import scala.Tuple2;
 import java.util.List;
 
 /**
- * @title: 二次排序测试类
- * @description: 测试SecondarySortingKey.java的功能排序
+ * @title: 电影二次排序
+ * @description: 电影时间戳和评分数二次排序
  * @author: jguo
- * @date: 2021/6/16
+ * @date: 2021/6/20
  */
-public class MovieUsersAnalyzerTest {
+public class MovieUsersAnalyzer {
     public static void main(String[] args) {
         //设置打印日志的输出级别
         Logger.getLogger("org").setLevel(Level.WARN);
@@ -26,14 +26,15 @@ public class MovieUsersAnalyzerTest {
          * 创建Spark集群上下文sc，在sc上进行各种依赖和参数的设置。
          */
         JavaSparkContext sc = new JavaSparkContext(new SparkConf().setMaster("local[4]").setAppName("Movie_Users_Analyzer"));
-        //测试采用的样例
-        JavaRDD<String> lines = sc.textFile("data/" + "dataforsecondarysorting.txt");
+        //电影评分数据二次排序，从时间、评分数两个维度来进行排序，先进行时间排序，然后按照评分进行二次排序
+        //数据源”ratings.dat”: UserID::MovieID::Rating::Timestamp
+        JavaRDD<String> lines = sc.textFile("data/" + "ratings.dat");
         JavaPairRDD<SecondarySortingKey,String> keyValues = lines.mapToPair(new PairFunction<String, SecondarySortingKey, String>() {
             private static final long serialVersionUID = 1L;
             @Override
             public Tuple2<SecondarySortingKey, String> call(String s) throws Exception {
-                String[] splited = s.split(" ");
-                SecondarySortingKey key = new SecondarySortingKey(Integer.valueOf(splited[0]),Integer.valueOf(splited[1])); //组合成key值
+                String[] splited = s.split("::");
+                SecondarySortingKey key = new SecondarySortingKey(Integer.valueOf(splited[3]),Integer.valueOf(splited[2])); //组合成key值
                 return new Tuple2<SecondarySortingKey,String>(key,s);
             }
         });
@@ -51,5 +52,4 @@ public class MovieUsersAnalyzerTest {
             System.out.println(item);
         }
     }
-
 }
