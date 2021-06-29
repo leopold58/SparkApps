@@ -105,6 +105,75 @@ object Movie_Users_Analyzer_DateFrame {
          |group by Gender,Age
          |""".stripMargin).show(10)
 
+    println("纯粹通过RDD的方式实现所有电影中平均得分最高的电影TopN：")
+    val ratings = ratingsRDD.map(_.split("::")).map( x => (x(0),x(1),x(2))).cache()
+    ratings.map(x => (x._2, (x._3.toDouble,1.toDouble)))
+      .reduceByKey((x,y)=>(x._1 + y._1,x._2 + y._2))
+      .map(x => (x._2._1.toDouble/x._2._2.toDouble,x._1))
+      .sortByKey(false)
+      .map(x => (x._2, x._1))
+      .take(10)
+      .foreach(println)
+
+    ratingsDataFrame.printSchema()
+
+    println("通过DataFrame和RDD相结合的方式计算所有电影中平均得分最高（口碑最好）的电影TopN：")
+    ratingsDataFrame.select("MovieID", "Rating").groupBy("MovieID")
+      .avg("Rating")
+      .rdd
+      .map(row => (row(1),(row(0),row(1))))
+      .sortBy(_._1.toString.toDouble, false)
+      .map(tuple => tuple._2)
+      .collect
+      .take(10)
+      .foreach(println)
+
+    import spark.sqlContext.implicits._
+    println("通过纯粹使用DataFrame方式计算所有电影中平均得分最高（口碑最好）的电影TopN：")
+    ratingsDataFrame.select("MovieID", "Rating").groupBy("MovieID")
+      .avg("Rating")
+      .orderBy($"avg(Rating)".desc)
+      .show(10)
+
+    println("纯粹通过RDD的方式计算所有电影中粉丝或观看人数最多（最流行电影）的电影TopN：")
+    ratings.map(x => (x._2,1))
+      .reduceByKey(_+_)
+      .map(x => (x._2,x._1))
+      .sortByKey(false)
+      .map(x => (x._2,x._1)).collect()
+      .take(10)
+      .foreach(println)
+
+    println("通过DataFrame 和 RDD结合的方式计算最流行电影（即所有电影中粉丝或者观看人数最多）的电影TopN：")
+    ratingsDataFrame.select("MovieID", "Timestamp").groupBy("MovieID")
+      .count()
+      .rdd
+      .map(row => (row(1).toString.toLong, (row(0), row(1))))
+      .sortByKey(false)
+      .map(tuple => tuple._2).collect()
+      .take(10)
+      .foreach(println)
+
+    println("纯粹通过DataFrame的方式计算最流行电影（即所有电影中粉丝或者观看人数最多）的电影TopN：")
+    ratingsDataFrame.groupBy("MovieID").count()
+      .orderBy($"count".desc).show(10)
+
+    /**
+     *  上面 纯碎通过DataFrame的方式计算最流行电影的输出
+     *  |MovieID|count|
+        +-------+-----+
+        |   2858| 3428|
+        |    260| 2991|
+        |   1196| 2990|
+        |   1210| 2883|
+        |    480| 2672|
+        |   2028| 2653|
+        |    589| 2649|
+        |   2571| 2590|
+        |   1270| 2583|
+        |    593| 2578|
+     */
+
   }
 
 
