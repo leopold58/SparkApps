@@ -127,6 +127,11 @@
             <version>2.2.0</version>
         </dependency>
         <dependency>
+            <groupId>com.amazon.deequ</groupId>
+            <artifactId>deequ</artifactId>
+            <version>1.0.4</version>
+        </dependency>
+        <dependency>
             <groupId>org.scalanlp</groupId>
             <artifactId>breeze_2.11</artifactId>
             <version>0.11.2</version>
